@@ -43,17 +43,12 @@ GEMINI_FIELD_ORDER = [
     "AI_卖点_CN_3",
     "AI_卖点_CN_4",
     "AI_卖点_CN_5",
-    "AI_规格描述_EN_1",
-    "AI_规格描述_EN_2",
-    "AI_规格描述_EN_3",
-    "AI_规格描述_EN_4",
-    "AI_规格描述_EN_5",
-    "AI_规格描述_CN_1",
-    "AI_规格描述_CN_2",
-    "AI_规格描述_CN_3",
-    "AI_规格描述_CN_4",
-    "AI_规格描述_CN_5",
+    "AI_规格描述_EN",
+    "AI_规格描述_CN",
 ]
+
+OLD_SPEC_EN_FIELDS = [f"AI_规格描述_EN_{i}" for i in range(1, 6)]
+OLD_SPEC_CN_FIELDS = [f"AI_规格描述_CN_{i}" for i in range(1, 6)]
 
 NUMBER_CLEAN_FIELDS = {
     "AI_卖点_EN_1",
@@ -66,17 +61,10 @@ NUMBER_CLEAN_FIELDS = {
     "AI_卖点_CN_3",
     "AI_卖点_CN_4",
     "AI_卖点_CN_5",
-    "AI_规格描述_EN_1",
-    "AI_规格描述_EN_2",
-    "AI_规格描述_EN_3",
-    "AI_规格描述_EN_4",
-    "AI_规格描述_EN_5",
-    "AI_规格描述_CN_1",
-    "AI_规格描述_CN_2",
-    "AI_规格描述_CN_3",
-    "AI_规格描述_CN_4",
-    "AI_规格描述_CN_5",
+    "AI_规格描述_EN",
+    "AI_规格描述_CN",
 }
+
 
 
 class ExcelExtractorApp:
@@ -636,18 +624,54 @@ class ExcelExtractorApp:
             return df
         raise ValueError("仅支持 .txt / .tsv / .xlsx / .xls 文件。")
 
+    def _join_old_spec_fields(self, row: pd.Series, keys: list[str]) -> str:
+        vals = []
+        for key in keys:
+            v = self._clean_cell(row.get(key, ""))
+            if v:
+                vals.append(v)
+        return " || ".join(vals)
+
+    def _format_spec_multiline(self, text: str) -> str:
+        raw = self._clean_cell(text)
+        if not raw:
+            return ""
+        parts = [self.clean_leading_numbering(x) for x in re.split(r"\s*\|\|\s*", raw)]
+        parts = [x for x in [p.strip() for p in parts] if x]
+        return "\n".join([f"{i}. {v}" for i, v in enumerate(parts, start=1)])
+
     def convert_gemini_result_to_vertical_excel(self, df: pd.DataFrame, output_path: str):
         missing = [f for f in GEMINI_FIELD_ORDER if f not in df.columns]
         if missing:
             self._append_log(f"提示：缺少字段，已按空值处理: {', '.join(missing)}")
 
+        has_new_spec_en = "AI_规格描述_EN" in df.columns
+        has_new_spec_cn = "AI_规格描述_CN" in df.columns
+        has_old_spec_en = any(c in df.columns for c in OLD_SPEC_EN_FIELDS)
+        has_old_spec_cn = any(c in df.columns for c in OLD_SPEC_CN_FIELDS)
+
+        if not has_new_spec_en and has_old_spec_en:
+            self._append_log("提示：检测到旧版规格字段 EN_1~EN_5，已自动合并为 AI_规格描述_EN")
+        if not has_new_spec_cn and has_old_spec_cn:
+            self._append_log("提示：检测到旧版规格字段 CN_1~CN_5，已自动合并为 AI_规格描述_CN")
+
         records = []
         for _, row in df.iterrows():
+            spec_en_source = self._clean_cell(row.get("AI_规格描述_EN", "")) if has_new_spec_en else self._join_old_spec_fields(row, OLD_SPEC_EN_FIELDS)
+            spec_cn_source = self._clean_cell(row.get("AI_规格描述_CN", "")) if has_new_spec_cn else self._join_old_spec_fields(row, OLD_SPEC_CN_FIELDS)
+
             for field in GEMINI_FIELD_ORDER:
-                value = row[field] if field in row.index else ""
-                if field in NUMBER_CLEAN_FIELDS:
-                    value = self.clean_leading_numbering(value)
-                records.append({"字段": field, "内容": self._clean_cell(value)})
+                if field == "AI_规格描述_EN":
+                    value = self._format_spec_multiline(spec_en_source)
+                elif field == "AI_规格描述_CN":
+                    value = self._format_spec_multiline(spec_cn_source)
+                else:
+                    value = row[field] if field in row.index else ""
+                    if field in NUMBER_CLEAN_FIELDS:
+                        value = self.clean_leading_numbering(value)
+                    value = self._clean_cell(value)
+
+                records.append({"字段": field, "内容": value})
             records.append({"字段": "", "内容": ""})
 
         out_df = pd.DataFrame(records, columns=["字段", "内容"])
