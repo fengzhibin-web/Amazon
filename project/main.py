@@ -143,6 +143,7 @@ class ExcelExtractorApp:
     def _build_tab_excel(self, parent):
         self._labeled_path_row(parent, "输入 Excel:", self.input_path_var, self.choose_input_file, drop_types={".xlsx", ".xls"})
         self._labeled_path_row(parent, "输出 Excel:", self.output_path_var, self.choose_output_file, save_mode=True)
+        self._add_drop_zone(parent, "拖拽上传区（Excel去重提取）", self.input_path_var, {".xlsx", ".xls"})
 
         tk.Button(parent, text="开始提取 Excel", width=20, command=self.run_extract, bg="#0ea5e9", fg="white").pack(
             anchor="w", pady=8
@@ -163,6 +164,7 @@ class ExcelExtractorApp:
             self.choose_gemini_output_dir,
             dir_mode=True,
         )
+        self._add_drop_zone(parent, "拖拽上传区（Gemini批量输入）", self.input_path_var, {".xlsx", ".xls"})
 
         row = tk.Frame(parent)
         row.pack(fill="x", pady=4)
@@ -181,6 +183,7 @@ class ExcelExtractorApp:
             self.choose_gemini_source_file,
             drop_types={".txt", ".tsv", ".xlsx", ".xls"},
         )
+        self._add_drop_zone(parent, "拖拽上传区（Gemini TSV转纵向表）", self.gemini_source_file_var, {".txt", ".tsv", ".xlsx", ".xls"})
 
         row_out = tk.Frame(parent)
         row_out.pack(fill="x", pady=4)
@@ -248,6 +251,29 @@ class ExcelExtractorApp:
 
         if DND_AVAILABLE and drop_types:
             self._enable_drop(entry, var, drop_types)
+
+    def _add_drop_zone(self, parent, title, var, allowed_exts):
+        zone = tk.Label(
+            parent,
+            text=title,
+            relief="groove",
+            bd=1,
+            height=3,
+            anchor="center",
+            bg="#F8FAFC",
+            fg="#334155",
+        )
+        zone.pack(fill="x", pady=(4, 8))
+
+        if DND_AVAILABLE:
+            try:
+                zone.drop_target_register(DND_FILES)
+                zone.dnd_bind("<<Drop>>", lambda e: self._handle_drop(e, var, allowed_exts))
+                zone.configure(text=title + "\n(可拖拽文件到此区域)")
+            except Exception:
+                zone.configure(text=title + "\n(拖拽初始化失败，请使用选择按钮)")
+        else:
+            zone.configure(text=title + "\n(当前环境未启用拖拽，请使用选择按钮)")
 
     def _enable_drop(self, widget, var_obj, allowed_exts):
         try:
