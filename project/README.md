@@ -22,14 +22,31 @@ project/
 
 ---
 
-## 本地开发运行
+## 为什么双击 `build.bat` 会“没反应”？
 
-> 仅用于开发调试；最终用户可直接使用打包后的 exe，无需安装 Python。
+最常见原因：
 
-```bash
-pip install -r requirements.txt
-python main.py
-```
+1. 电脑没有安装 Python（或未加入 PATH）
+2. pip 安装依赖失败后窗口瞬间关闭
+3. 杀毒软件拦截了 PyInstaller
+
+本项目的新版 `build.bat` 已做了改进：
+
+- 自动检测 `py -3` / `python`
+- 自动安装依赖
+- 出错时会停在窗口并显示错误提示，不会一闪而过
+
+---
+
+## 打包前你需要安装什么？
+
+> 只在“打包机”上需要安装一次。最终使用 exe 的用户不需要安装 Python。
+
+1. 安装 Python 3.10+（推荐 3.10~3.12）
+   - 下载：https://www.python.org/downloads/windows/
+   - 安装时勾选 **Add Python to PATH**
+2. （可选）安装 Microsoft Visual C++ Redistributable
+   - 某些环境下可避免运行时缺组件
 
 ---
 
@@ -41,15 +58,15 @@ python main.py
 build.bat
 ```
 
-`build.bat` 内已包含核心命令（单文件 + 无控制台窗口）：
+脚本内部核心命令为：
 
 ```bat
 pyinstaller --onefile --windowed --name ExcelExtractor main.py
 ```
 
-并额外补充了常见隐藏依赖 `hidden-import`，减少打包后运行缺模块的风险。
+并额外补充了常见隐藏依赖 `hidden-import`，降低缺模块风险。
 
-打包完成后文件位置：
+打包成功后文件位置：
 
 ```text
 dist\ExcelExtractor.exe
@@ -57,9 +74,9 @@ dist\ExcelExtractor.exe
 
 ---
 
-## 给最终用户
+## 给最终用户（无需 Python）
 
-将 `ExcelExtractor.exe` 发送给目标用户即可。用户电脑 **不需要安装 Python**：
+将 `dist\ExcelExtractor.exe` 发给最终用户即可。用户电脑 **不需要安装 Python**：
 
 1. 双击 `ExcelExtractor.exe`
 2. 选择输入 Excel
