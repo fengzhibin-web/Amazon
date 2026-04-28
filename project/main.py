@@ -1,4 +1,3 @@
-import io
 import json
 import math
 import os
@@ -553,11 +552,42 @@ class ExcelExtractorApp:
         if not cleaned.strip():
             raise ValueError("未检测到可解析的 TSV 内容。")
 
-        df = pd.read_csv(io.StringIO(cleaned), sep="\t", dtype=str, keep_default_na=False, engine="python")
-        if df.empty or len(df.columns) == 0:
+        # 兼容网页复制后把换行变成字面量 \n 的场景
+        cleaned = cleaned.replace("\r\n", "\n").replace("\r", "\n")
+        if "\\n" in cleaned:
+            cleaned = cleaned.replace("\\n", "\n")
+
+        lines = [ln.rstrip() for ln in cleaned.split("\n") if ln.strip()]
+        if not lines:
+            raise ValueError("解析不到表头，请确认 TSV 文本不为空。")
+
+        header_line = lines[0].strip()
+        headers = [self._normalize_col_name(h) for h in header_line.split("\t")]
+        if not headers or headers[0] == "":
             raise ValueError("解析不到表头，请确认第一行为 TSV 表头并使用 Tab 分隔。")
 
-        df.columns = [self._normalize_col_name(c) for c in df.columns]
+        rows = []
+        for line in lines[1:]:
+            line_strip = line.strip()
+            # 跳过重复出现的表头行
+            if line_strip == header_line:
+                continue
+            if line_strip.startswith("id\t原始标题\t原始描述"):
+                continue
+
+            parts = line.rstrip().split("\t")
+            if len(parts) < len(headers):
+                parts += [""] * (len(headers) - len(parts))
+            elif len(parts) > len(headers):
+                # 超长时把多余列拼回最后一列，避免整体错位
+                parts = parts[: len(headers) - 1] + ["\t".join(parts[len(headers) - 1 :])]
+
+            rows.append(parts)
+
+        if not rows:
+            raise ValueError("没有解析到有效数据行，请检查 TSV 内容格式。")
+
+        df = pd.DataFrame(rows, columns=headers)
         df = df.fillna("")
         for col in df.columns:
             df[col] = df[col].apply(self._clean_cell)
