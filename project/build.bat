@@ -43,11 +43,13 @@ if errorlevel 1 goto :pip_fail
 echo.
 echo [3/4] 开始打包（单文件 + 无控制台）...
 %PY_CMD% -m PyInstaller --noconfirm --clean --onefile --windowed --name ExcelExtractor ^
+  --collect-all tkinterdnd2 ^
   --hidden-import=tkinter ^
   --hidden-import=tkinter.filedialog ^
   --hidden-import=tkinter.messagebox ^
   --hidden-import=openpyxl ^
   --hidden-import=pandas ^
+  --hidden-import=tkinterdnd2 ^
   main.py
 if errorlevel 1 goto :build_fail
 

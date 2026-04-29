@@ -9,6 +9,7 @@ hiddenimports += [
     "tkinter.filedialog",
     "tkinter.messagebox",
     "openpyxl",
+    "tkinterdnd2",
 ]
 
 
