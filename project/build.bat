@@ -48,7 +48,6 @@ echo [3/4] 开始打包（单文件 + 无控制台）...
   --hidden-import=tkinter.messagebox ^
   --hidden-import=openpyxl ^
   --hidden-import=pandas ^
-  --hidden-import=tkinterdnd2 ^
   main.py
 if errorlevel 1 goto :build_fail
 
