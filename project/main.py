@@ -550,9 +550,16 @@ class ExcelExtractorApp:
         raw = self._clean_cell(text)
         if not raw:
             return ""
-        parts = [self.clean_leading_numbering(x) for x in re.split(r"\s*\|\|\s*", raw)]
-        parts = [p.strip() for p in parts if p.strip()]
-        return "\n".join([f"{i}. {v}" for i, v in enumerate(parts, start=1)])
+
+        # 先按 || 切段，再按换行展开，确保无论哪种来源都能清洗已有序号
+        items = []
+        for seg in re.split(r"\s*\|\|\s*", raw):
+            for line in str(seg).splitlines():
+                cleaned = self.clean_leading_numbering(line).strip()
+                if cleaned:
+                    items.append(cleaned)
+
+        return "\n".join([f"{i}. {v}" for i, v in enumerate(items, start=1)])
 
     def _validate_and_normalize_new_fields(self, df: pd.DataFrame):
         missing = [f for f in REQUIRED_GEMINI_FIELDS if f not in df.columns]
