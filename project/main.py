@@ -80,7 +80,7 @@ class ExcelExtractorApp:
 
         tk.Label(
             top_frame,
-            text="流程1：原始Excel -> 去重导出 + Gemini批量TXT | 流程2：Gemini结果(TSV/文件) -> 纵向Excel",
+            text="流程1：原始Excel -> 去重 + 切分每组多少产品  | 流程2：Gemini返回的结果 -> Excel结果文件",
             font=("Microsoft YaHei", 10, "bold"), anchor="w"
         ).pack(fill="x", pady=(0, 6))
 
@@ -102,7 +102,7 @@ class ExcelExtractorApp:
         tab_step1 = tk.Frame(notebook)
         tab_step2 = tk.Frame(notebook)
         notebook.add(tab_step1, text="流程1：去重+切分")
-        notebook.add(tab_step2, text="流程2：Gemini转纵向")
+        notebook.add(tab_step2, text="流程2：Gemini返回结果转Excel")
 
         self._build_tab_step1(tab_step1)
         self._build_tab_step2(tab_step2)
@@ -113,12 +113,12 @@ class ExcelExtractorApp:
 
     def _build_tab_step1(self, parent):
         tutorial = (
-            "流程1教程：\n1) 选择原始Excel。\n2) 配置批量大小（一个txt包含多少ID）。\n"
+            "流程1教程：\n1) 选择从智赢主库导出的原始Excel。\n2) 配置批量大小（一个txt包含多少ID）。\n"
             "3) 配置输出目录与文件名。\n4) 点击运行，自动完成去重+切分。"
         )
         tk.Label(parent, text=tutorial, justify="left", fg="#334155").pack(fill="x", pady=(0, 8))
 
-        self._row_file(parent, "原始 Excel:", self.input_path_var, self.choose_input_file, {".xlsx", ".xls"})
+        self._row_file(parent, "原始 Excel（智赢主库导出获取）:", self.input_path_var, self.choose_input_file, {".xlsx", ".xls"})
 
         row = tk.Frame(parent)
         row.pack(fill="x", pady=4)
@@ -128,15 +128,15 @@ class ExcelExtractorApp:
 
         self._row_dir(parent, "去重输出目录:", self.dedup_output_dir_var, self.choose_dedup_output_dir)
         self._row_file_name(parent, "去重输出文件名:", self.dedup_filename_var)
-        self._row_dir(parent, "批量TXT输出目录:", self.batch_output_dir_var, self.choose_batch_output_dir)
+        self._row_dir(parent, "切分后的文件输出目录:", self.batch_output_dir_var, self.choose_batch_output_dir)
 
-        self._add_drop_zone(parent, "拖拽上传区（流程1 Excel）", self.input_path_var, {".xlsx", ".xls"})
+        self._add_drop_zone(parent, "拖拽上传区（可以直接拖拽上传原始Excel）", self.input_path_var, {".xlsx", ".xls"})
 
         tk.Button(parent, text="运行流程1（去重+切分）", width=24, bg="#0ea5e9", fg="white", command=self.run_step1_pipeline).pack(anchor="w", pady=10)
 
     def _build_tab_step2(self, parent):
         tutorial = (
-            "流程2教程：\n直接粘贴网页 Gemini TSV 文本后转换。"
+            "流程2教程：\n直接粘贴Gemini返回的结果后转换为Excel。"
         )
         tk.Label(parent, text=tutorial, justify="left", fg="#334155").pack(fill="x", pady=(0, 8))
 
@@ -147,7 +147,7 @@ class ExcelExtractorApp:
 
         row = tk.Frame(parent)
         row.pack(fill="x", pady=4)
-        tk.Label(row, text="Batch源文件TXT:", width=22, anchor="w").pack(side="left")
+        tk.Label(row, text="这一组产品的切分文件txt(流程1切分的文件):", width=22, anchor="w").pack(side="left")
         self._batch_txt_entry = tk.Entry(row, textvariable=self.batch_source_txt_var, state="disabled")
         self._batch_txt_entry.pack(side="left", fill="x", expand=True)
         self._batch_txt_btn = tk.Button(row, text="选择", width=10, command=self.choose_batch_source_txt, state="disabled")
@@ -155,10 +155,10 @@ class ExcelExtractorApp:
         if DND_AVAILABLE:
             self._enable_drop(self._batch_txt_entry, self.batch_source_txt_var, {".txt"})
 
-        self._row_dir(parent, "纵向Excel输出目录:", self.vertical_output_dir_var, self.choose_vertical_output_dir)
-        self._row_file_name(parent, "纵向输出文件名:", self.vertical_filename_var)
+        self._row_dir(parent, "Excel输出目录:", self.vertical_output_dir_var, self.choose_vertical_output_dir)
+        self._row_file_name(parent, "输出文件名:", self.vertical_filename_var)
 
-        tk.Label(parent, text="粘贴 Gemini TSV 文本（支持 ```tsv 包裹）:", anchor="w").pack(fill="x", pady=(8, 4))
+        tk.Label(parent, text="粘贴 Gemini返回的处理好的文本（TSV）:", anchor="w").pack(fill="x", pady=(8, 4))
         self.tsv_paste_text = tk.Text(parent, height=14, wrap="word")
         self.tsv_paste_text.pack(fill="both", expand=True)
 
