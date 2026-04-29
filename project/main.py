@@ -62,9 +62,9 @@ class ExcelExtractorApp:
         self.vertical_output_dir_var = tk.StringVar()
         self.vertical_filename_var = tk.StringVar(value=self._default_vertical_filename())
 
-        self.gemini_result_file_var = tk.StringVar()
         self.batch_source_txt_var = tk.StringVar()
-        self.include_original_var = tk.BooleanVar(value=False)
+        self.include_original_title_var = tk.BooleanVar(value=False)
+        self.include_original_desc_var = tk.BooleanVar(value=False)
 
         self.tasks = []
         self.task_counter = 0
@@ -136,18 +136,14 @@ class ExcelExtractorApp:
 
     def _build_tab_step2(self, parent):
         tutorial = (
-            "流程2教程：\n"
-            "方式A: 选择Gemini结果文件(.txt/.tsv/.xlsx/.xls)后转换；\n"
-            "方式B: 直接粘贴网页Gemini TSV文本后转换。"
+            "流程2教程：\n直接粘贴网页 Gemini TSV 文本后转换。"
         )
         tk.Label(parent, text=tutorial, justify="left", fg="#334155").pack(fill="x", pady=(0, 8))
 
-        self._row_file(parent, "Gemini结果文件:", self.gemini_result_file_var, self.choose_gemini_result_file, {".txt", ".tsv", ".xlsx", ".xls"})
-        self._add_drop_zone(parent, "拖拽上传区（Gemini结果文件）", self.gemini_result_file_var, {".txt", ".tsv", ".xlsx", ".xls"})
-
         cb_row = tk.Frame(parent)
         cb_row.pack(fill="x", pady=4)
-        tk.Checkbutton(cb_row, text="输出原始标题和原始描述", variable=self.include_original_var, command=self._toggle_batch_source_widgets).pack(side="left")
+        tk.Checkbutton(cb_row, text="输出原始标题", variable=self.include_original_title_var, command=self._toggle_batch_source_widgets).pack(side="left")
+        tk.Checkbutton(cb_row, text="输出原始描述", variable=self.include_original_desc_var, command=self._toggle_batch_source_widgets).pack(side="left", padx=(12, 0))
 
         row = tk.Frame(parent)
         row.pack(fill="x", pady=4)
@@ -163,13 +159,10 @@ class ExcelExtractorApp:
         self._row_file_name(parent, "纵向输出文件名:", self.vertical_filename_var)
 
         tk.Label(parent, text="粘贴 Gemini TSV 文本（支持 ```tsv 包裹）:", anchor="w").pack(fill="x", pady=(8, 4))
-        self.tsv_paste_text = tk.Text(parent, height=12, wrap="word")
+        self.tsv_paste_text = tk.Text(parent, height=14, wrap="word")
         self.tsv_paste_text.pack(fill="both", expand=True)
 
-        btn_row = tk.Frame(parent)
-        btn_row.pack(fill="x", pady=8)
-        tk.Button(btn_row, text="从文件转换", width=16, bg="#7c3aed", fg="white", command=self.run_convert_gemini_vertical_from_file).pack(side="left")
-        tk.Button(btn_row, text="从粘贴文本转换", width=18, bg="#9333ea", fg="white", command=self.run_convert_gemini_vertical_from_paste).pack(side="left", padx=(8, 0))
+        tk.Button(parent, text="从粘贴文本转换", width=18, bg="#9333ea", fg="white", command=self.run_convert_gemini_vertical_from_paste).pack(side="left", pady=8)
 
     def _build_task_area(self, parent):
         tk.Label(parent, text="任务列表", font=("Microsoft YaHei", 10, "bold")).pack(anchor="w", pady=(0, 6))
@@ -232,7 +225,7 @@ class ExcelExtractorApp:
         var_obj.set(path)
 
     def _toggle_batch_source_widgets(self):
-        enabled = self.include_original_var.get()
+        enabled = self.include_original_title_var.get() or self.include_original_desc_var.get()
         state = "normal" if enabled else "disabled"
         if self._batch_txt_entry:
             self._batch_txt_entry.configure(state=state)
@@ -351,11 +344,6 @@ class ExcelExtractorApp:
             self.vertical_output_dir_var.set(d)
             if not self.vertical_filename_var.get().strip():
                 self.vertical_filename_var.set(self._default_vertical_filename())
-
-    def choose_gemini_result_file(self):
-        p = filedialog.askopenfilename(title="选择Gemini结果文件", filetypes=[("Gemini", "*.txt *.tsv *.xlsx *.xls"), ("所有", "*.*")])
-        if p:
-            self.gemini_result_file_var.set(p)
 
     def choose_batch_source_txt(self):
         p = filedialog.askopenfilename(title="选择Batch源文件txt", filetypes=[("文本文件", "*.txt"), ("所有", "*.*")])
@@ -566,14 +554,16 @@ class ExcelExtractorApp:
         if missing:
             raise ValueError("缺少新版必需字段: " + ", ".join(missing))
 
-    def _build_vertical_field_order(self, include_original: bool):
+    def _build_vertical_field_order(self, include_title: bool, include_desc: bool):
         base_fields = ["id"]
-        if include_original:
-            base_fields += ["原始标题", "原始描述"]
+        if include_title:
+            base_fields += ["原始标题"]
+        if include_desc:
+            base_fields += ["原始描述"]
         base_fields += BASE_VERTICAL_FIELDS[1:]
         return base_fields
 
-    def convert_gemini_result_to_vertical_excel(self, df: pd.DataFrame, output_path: str, include_original: bool = False, source_map: dict | None = None):
+    def convert_gemini_result_to_vertical_excel(self, df: pd.DataFrame, output_path: str, include_title: bool = False, include_desc: bool = False, source_map: dict | None = None):
         self._validate_and_normalize_new_fields(df)
 
         has_new_en = "AI_规格描述_EN" in df.columns
@@ -581,7 +571,7 @@ class ExcelExtractorApp:
         has_old_en = any(c in df.columns for c in OLD_SPEC_EN_FIELDS)
         has_old_cn = any(c in df.columns for c in OLD_SPEC_CN_FIELDS)
 
-        fields = self._build_vertical_field_order(include_original)
+        fields = self._build_vertical_field_order(include_title, include_desc)
         records = []
         matched = 0
         missing_original_ids = []
@@ -593,7 +583,7 @@ class ExcelExtractorApp:
 
             original_title = ""
             original_desc = ""
-            if include_original:
+            if include_title or include_desc:
                 if source_map and rid in source_map:
                     original_title = source_map[rid].get("原始标题", "")
                     original_desc = source_map[rid].get("原始描述", "")
@@ -653,7 +643,7 @@ class ExcelExtractorApp:
             visual_lines = 0
             for ln in logical_lines:
                 visual_lines += max(1, math.ceil(len(ln) / 85))
-            ws.row_dimensions[i].height = max(22, min(520, visual_lines * 19))
+            ws.row_dimensions[i].height = max(13.5, min(240, visual_lines * 13.5))
             if str(fc.value).strip() == "id":
                 fc.fill = id_fill
                 cc.fill = id_fill
@@ -675,7 +665,9 @@ class ExcelExtractorApp:
         try:
             source_map = None
             remark_extra = ""
-            if self.include_original_var.get():
+            include_title = self.include_original_title_var.get()
+            include_desc = self.include_original_desc_var.get()
+            if include_title or include_desc:
                 txt = self.batch_source_txt_var.get().strip()
                 if txt:
                     source_map = self.parse_batch_source_txt(txt)
@@ -684,13 +676,15 @@ class ExcelExtractorApp:
                     self._append_log("提示：未选择 batch 源文件 txt，将尝试从TSV旧字段回退原始标题/描述。")
 
             out_path = self._build_vertical_output_path()
-            matched, missing_ids = self.convert_gemini_result_to_vertical_excel(df, out_path, self.include_original_var.get(), source_map)
+            matched, missing_ids = self.convert_gemini_result_to_vertical_excel(df, out_path, include_title, include_desc, source_map)
 
             if missing_ids:
                 for mid in missing_ids[:20]:
                     self._append_log(f"未在源文件中找到 id: {mid} 的原始标题/描述")
             remark = f"转换成功{remark_extra}"
-            if self.include_original_var.get():
+            include_title = self.include_original_title_var.get()
+            include_desc = self.include_original_desc_var.get()
+            if include_title or include_desc:
                 remark += f"; 匹配{matched}个ID; 未匹配{len(missing_ids)}个ID"
 
             self._append_log(f"转换完成，共处理 {len(df)} 个产品，输出文件：{out_path}", out_path)
@@ -700,17 +694,6 @@ class ExcelExtractorApp:
             self._append_log(f"Gemini 纵向转换失败: {exc}")
             self._update_task(task, status="失败", remark=str(exc))
             messagebox.showerror("错误", str(exc))
-
-    def run_convert_gemini_vertical_from_file(self):
-        p = self.gemini_result_file_var.get().strip()
-        if not p:
-            messagebox.showerror("错误", "请先选择 Gemini 结果文件。")
-            return
-        if not os.path.exists(p):
-            messagebox.showerror("错误", "Gemini 结果文件不存在。")
-            return
-        df = self.read_gemini_result_file(p)
-        self._run_vertical(df, "文件导入")
 
     def run_convert_gemini_vertical_from_paste(self):
         text = self.tsv_paste_text.get("1.0", "end")
