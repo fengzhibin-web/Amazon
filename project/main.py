@@ -559,7 +559,7 @@ class ExcelExtractorApp:
                 if cleaned:
                     items.append(cleaned)
 
-        return "\n".join([f"{i}. {v}" for i, v in enumerate(items, start=1)])
+        return "\n".join(items)
 
     def _validate_and_normalize_new_fields(self, df: pd.DataFrame):
         missing = [f for f in REQUIRED_GEMINI_FIELDS if f not in df.columns]
@@ -647,8 +647,13 @@ class ExcelExtractorApp:
             fc.fill = field_fill
             fc.alignment = Alignment(vertical="top")
             cc.alignment = Alignment(wrap_text=True, vertical="top")
-            lines = str(cc.value or "").count("\n") + 1
-            ws.row_dimensions[i].height = max(20, min(180, lines * 18))
+            text_val = str(cc.value or "")
+            logical_lines = text_val.split("\n") if text_val else [""]
+            # 按列宽估算自动换行后的可视行数，避免卖点/描述显示不全
+            visual_lines = 0
+            for ln in logical_lines:
+                visual_lines += max(1, math.ceil(len(ln) / 85))
+            ws.row_dimensions[i].height = max(22, min(520, visual_lines * 19))
             if str(fc.value).strip() == "id":
                 fc.fill = id_fill
                 cc.fill = id_fill
