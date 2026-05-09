@@ -63,7 +63,7 @@ python -m PyInstaller --onefile --windowed --name ExcelExtractor --collect-all t
 ### 导出前文本清洗
 
 所有写入 Excel 的字段在导出前会统一执行清洗：
-- 清理 `[cite: x]`、`[citation needed]`、行尾 `[1]` 等引用残留
+- 清理 `[cite: x]`、`[cite start]`、`[cite end]`、`[citation needed]`、行尾 `[1]` 等引用残留
 - 清理包裹性首尾双引号
 - 统一换行并去除首尾/中间空白行（保留有效多行）
 - 不压缩为单行

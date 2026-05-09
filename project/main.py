@@ -291,6 +291,8 @@ class ExcelExtractorApp:
 
         val = re.sub(r"\[citation needed\]", "", val, flags=re.IGNORECASE)
         val = re.sub(r"【citation needed】", "", val, flags=re.IGNORECASE)
+        val = re.sub(r"\[cite\s*start\]", "", val, flags=re.IGNORECASE)
+        val = re.sub(r"\[cite\s*end\]", "", val, flags=re.IGNORECASE)
 
         val = re.sub(r"\s*\[\d+\](?=\s*(?:$|\n|。|\.|,|，|;|；))", "", val)
 
@@ -306,6 +308,7 @@ class ExcelExtractorApp:
             if not line:
                 continue
             line = cite_pattern.sub("", line).strip()
+            line = re.sub(r"\[cite\s*start\]|\[cite\s*end\]", "", line, flags=re.IGNORECASE).strip()
             line = re.sub(r"\s*\[\d+\]\s*$", "", line).strip()
             if line.endswith('"') and not line.startswith('"'):
                 line = line[:-1].rstrip()
